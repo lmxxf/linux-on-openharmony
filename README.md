@@ -122,6 +122,18 @@ export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
 EOF
 ```
 
+### 共享目录
+
+chroot 进 Alpine 后根目录变成了 `/data/alpine`，看不到 OH 侧的文件。通过 bind mount 建一个共享目录：
+
+```bash
+# OH 侧执行（alpine-enter.sh 之前或之后都行）
+mkdir -p /data/alpine/shared
+mount -o bind /data/local/tmp /data/alpine/shared
+```
+
+之后 OH 侧写 `/data/local/tmp/xxx`，Alpine 里就能在 `/shared/xxx` 看到，反之亦然。用 `hdc file send` 推到 `/data/local/tmp` 的文件，Alpine 里直接就能用。
+
 ### SSH 远程登录
 
 在 Alpine 里配置 sshd，就可以从局域网直接 SSH 进来，不需要 hdc：
