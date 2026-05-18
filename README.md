@@ -4,7 +4,15 @@
 
 ## 原理
 
-OpenHarmony 底层就是 Linux 内核。chroot 只是让内核使用 Alpine 的用户空间（文件系统、包管理器、工具链），不需要虚拟机，不需要额外内核模块，原生性能。
+OpenHarmony 底层就是 Linux 内核。本项目通过 `chroot` 把根目录切换到 Alpine Linux 的文件系统，让你在 OH 设备上直接使用完整的 Linux 用户空间（包管理器、工具链、开发环境）。
+
+具体流程：
+
+1. 将 Alpine rootfs 解压到 `/data/alpine`
+2. 挂载 `/proc`、`/sys`、`/dev`（让 Alpine 能访问内核的虚拟文件系统）
+3. `chroot /data/alpine /bin/sh` 切换根目录，进入 Alpine 环境
+
+**不是虚拟机，不是容器**。Alpine 和 OH 共享同一个 Linux 内核、进程空间和网络栈，没有任何虚拟化开销，原生性能。代价是没有 namespace 隔离——Alpine 里能看到 OH 的所有进程，`kill` 也能杀掉 OH 的进程，操作时注意。
 
 ## 环境要求
 
@@ -30,8 +38,11 @@ hdc shell "sh /data/local/tmp/install.sh"
 ## 使用
 
 ```bash
-# 进入 Linux 环境
-hdc shell "sh /data/local/tmp/alpine-enter.sh"
+# 先连接设备
+hdc shell
+
+# 再进入 Linux 环境
+sh /data/local/tmp/alpine-enter.sh
 
 # 安装软件（在 Alpine 里）
 apk add python3 gcc git nodejs
@@ -49,9 +60,11 @@ Alpine 仓库有 25000+ 个包，随便装：
 
 ```bash
 apk add python3       # Python
+apk add openjdk17     # Java 17
 apk add gcc musl-dev  # C 编译器
 apk add nodejs npm    # Node.js
 apk add git           # Git
+apk add tmux          # 终端复用
 apk add openssh       # SSH 服务
 apk add vim           # 编辑器
 ```
@@ -88,6 +101,29 @@ passwd root
 # PC 上直接 SSH（替换为设备 IP）
 ssh root@<设备IP>
 ```
+
+### tmux 保持会话
+
+hdc 断开后 Alpine 里正在运行的进程会被杀掉。用 tmux 可以让会话在后台保持运行：
+
+```bash
+# 在 Alpine 里
+tmux                    # 新建会话
+tmux new -s work        # 新建命名会话
+
+# tmux 快捷键（先按 Ctrl+b，再按对应键）
+# d     断开会话（后台保持运行）
+# c     新建窗口
+# n/p   下一个/上一个窗口
+# %     左右分屏
+# "     上下分屏
+
+# 重新连回
+tmux attach -t work     # 连回命名会话
+tmux ls                 # 列出所有会话
+```
+
+下次 `hdc shell` 进来后重新执行 `alpine-enter.sh`，再 `tmux attach` 就能接回之前的会话。
 
 ## 卸载
 

@@ -72,7 +72,7 @@ info "更新软件源索引 ..."
 chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk update --allow-untrusted" 2>&1
 
 info "安装基础工具 ..."
-chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk add --allow-untrusted bash curl htop openssh" 2>&1
+chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk add --allow-untrusted bash curl htop tmux openssh" 2>&1
 
 # ── 生成入口脚本 ──
 
