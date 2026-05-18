@@ -12,9 +12,6 @@ set -e
 
 ALPINE_DIR="/data/alpine"
 ALPINE_VERSION="3.21"
-ALPINE_RELEASE="3.21.3"
-ALPINE_MIRROR="http://dl-cdn.alpinelinux.org/alpine"
-ROOTFS_URL="${ALPINE_MIRROR}/v${ALPINE_VERSION}/releases/aarch64/alpine-minirootfs-${ALPINE_RELEASE}-aarch64.tar.gz"
 ROOTFS_FILE="/data/local/tmp/alpine-minirootfs.tar.gz"
 ENTER_SCRIPT="/data/local/tmp/alpine-enter.sh"
 
@@ -29,40 +26,23 @@ err()  { echo "[!] $1" >&2; exit 1; }
 if [ -f "$ALPINE_DIR/etc/alpine-release" ]; then
     installed=$(cat "$ALPINE_DIR/etc/alpine-release")
     info "已安装 Alpine $installed，跳过安装"
-    info "如需重装，先执行: rm -rf $ALPINE_DIR"
+    info "如需重装，先执行: sh /data/local/tmp/uninstall.sh"
     info "入口脚本: sh $ENTER_SCRIPT"
     exit 0
 fi
 
-# ── 下载 rootfs ──
+# ── 检查 rootfs ──
 
-if [ -f "$ROOTFS_FILE" ]; then
-    info "rootfs 压缩包已存在，跳过下载"
-else
-    info "下载 Alpine $ALPINE_RELEASE rootfs ..."
-    if command -v curl >/dev/null 2>&1; then
-        curl -fSL -o "$ROOTFS_FILE" "$ROOTFS_URL"
-    elif command -v wget >/dev/null 2>&1; then
-        wget -O "$ROOTFS_FILE" "$ROOTFS_URL"
-    else
-        # OH 自带 netcat，用它拼 HTTP 请求
-        HOST="dl-cdn.alpinelinux.org"
-        PATH_URL="/alpine/v${ALPINE_VERSION}/releases/aarch64/alpine-minirootfs-${ALPINE_RELEASE}-aarch64.tar.gz"
-        err "设备上无 curl/wget，请在 PC 上下载后推送:\n  curl -o alpine.tar.gz $ROOTFS_URL\n  hdc file send alpine.tar.gz $ROOTFS_FILE"
-    fi
-fi
+[ -f "$ROOTFS_FILE" ] || err "未找到 $ROOTFS_FILE，请先推送:
+  hdc file send alpine-minirootfs-3.21.3-aarch64.tar.gz $ROOTFS_FILE"
 
 # ── 解压 ──
 
 info "解压到 $ALPINE_DIR ..."
 mkdir -p "$ALPINE_DIR"
-cd "$ALPINE_DIR"
 
-# OH 的 toybox tar 有路径安全限制，在目标目录下直接解压
-cp "$ROOTFS_FILE" "$ALPINE_DIR/rootfs.tar.gz"
-gunzip rootfs.tar.gz 2>/dev/null || gzip -d rootfs.tar.gz
-tar xf rootfs.tar
-rm -f rootfs.tar
+# toybox tar 对 ./ 条目报错但实际能解压，忽略该错误
+tar xzf "$ROOTFS_FILE" -C "$ALPINE_DIR" 2>/dev/null || true
 
 # 验证
 [ -f "$ALPINE_DIR/etc/alpine-release" ] || err "解压失败，未找到 alpine-release"
@@ -124,5 +104,5 @@ info "========================================"
 info "  安装完成！"
 info "  进入 Linux:  sh $ENTER_SCRIPT"
 info "  安装软件:    apk add <包名>"
-info "  占用空间:    $(du -sh "$ALPINE_DIR" | cut -f1)"
+info "  占用空间:    约 $(du -s "$ALPINE_DIR/usr" "$ALPINE_DIR/lib" "$ALPINE_DIR/bin" "$ALPINE_DIR/etc" "$ALPINE_DIR/sbin" "$ALPINE_DIR/var" 2>/dev/null | awk '{s+=$1} END{printf "%dM", s/1024}')"
 info "========================================"
