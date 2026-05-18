@@ -87,6 +87,41 @@ pip install requests flask
 
 `apk search py3-` 可以查看所有预编译的 Python 包。
 
+### 代理上网（翻墙）
+
+OH 设备通过手机热点上网时，可以走手机上的 Clash 代理访问外网：
+
+```bash
+# 设置代理（192.168.152.190 是手机热点 IP，7897 是 Clash 端口）
+export http_proxy=http://192.168.152.190:7897
+export https_proxy=http://192.168.152.190:7897
+
+# Alpine 的 SSL 证书路径和 OH 系统的不同，需要修正
+apk add ca-certificates
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+
+# 验证
+curl -I https://www.google.com
+```
+
+手机端 Clash 需要开启「允许局域网连接」（Allow LAN），否则只监听 127.0.0.1。
+
+如果 `apk` 报 `Unable to lock database`，先清锁文件：
+
+```bash
+rm -f /lib/apk/db/lock
+```
+
+写进 shell profile 免得每次手动设：
+
+```bash
+cat >> ~/.profile << 'EOF'
+export http_proxy=http://192.168.152.190:7897
+export https_proxy=http://192.168.152.190:7897
+export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+EOF
+```
+
 ### SSH 远程登录
 
 在 Alpine 里配置 sshd，就可以从局域网直接 SSH 进来，不需要 hdc：
