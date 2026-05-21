@@ -74,8 +74,29 @@ cd ~/oh6/source
 
 注意：此脚本编译 Linux x86_64 版本，Windows 下不可用。WSL 中可编译但因 USB 设备透传限制无法直接使用，需通过 TCP 模式连接设备（`hdc_std tconn IP:端口`）。
 
+### Windows 交叉编译（MinGW）
+
+使用 `scripts/build_standalone_mingw_host.sh`（同时保存在本工程根目录），在 WSL/Linux 中交叉编译 Windows 版 `hdc_std.exe`。
+
+前置依赖：`sudo apt install mingw-w64`（需要 posix 线程模型）。
+
+用法：
+
+```bash
+cd ~/oh6/source
+./developtools/hdc/scripts/build_standalone_mingw_host.sh ~/oh6/source
+```
+
+产物为当前目录下的 `hdc_std.exe`（PE32+ x86-64），静态链接不需要额外 DLL。
+
+与 Linux 版的主要差异：
+- 编译器：`x86_64-w64-mingw32-g++-posix`
+- 编译宏：`HOST_MINGW` + `_WIN32`（替代 `HOST_LINUX`）
+- libusb 使用 Windows 后端（`windows_winusb.c` 等）
+- 链接 `ws2_32`/`shlwapi`/`setupapi` 等 Windows 系统库
+
 ## 时间线
 
 - 2026-05-19：完成代码改动，打包补丁，hdcd 可随 OH 整包编译。
 - 2026-05-20：完成 PC 端 hdc 独立编译脚本（Linux x86_64），WSL 下编译验证通过。
-- 2026-05-21：hdc 源码目录整理为独立 git repo（合并子目录 git，建立原始代码基线）。
+- 2026-05-21：hdc 源码目录整理为独立 git repo（合并子目录 git，建立原始代码基线）。Windows 交叉编译脚本（MinGW），编译验证通过，可识别 USB 设备。
