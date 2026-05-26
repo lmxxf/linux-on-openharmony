@@ -134,20 +134,44 @@ mount -o bind /data/local/tmp /data/alpine/shared
 
 之后 OH 侧写 `/data/local/tmp/xxx`，Alpine 里就能在 `/shared/xxx` 看到，反之亦然。用 `hdc file send` 推到 `/data/local/tmp` 的文件，Alpine 里直接就能用。
 
+### 网络修复
+
+OH 设备可能有多个网口（eth0、eth1、wlan0），没有 IP 的 eth0/eth1 可能抢占默认路由，导致网络不通：
+
+```bash
+# 查看当前路由
+ip route
+
+# 如果 default 指向 eth0 而不是 wlan0，删掉它
+ip route del default dev eth0
+
+# 确保 default 走 wlan0（网关地址看你的路由器）
+ip route add default via 192.168.7.1 dev wlan0
+
+# 验证
+ping -c 1 8.8.8.8
+```
+
 ### SSH 远程登录
 
-在 Alpine 里配置 sshd，就可以从局域网直接 SSH 进来，不需要 hdc：
+在 Alpine 里用 dropbear（轻量 SSH 服务端）开启 SSH 服务。不用 OpenSSH 的 sshd，因为 OpenSSH 9.9 的 privilege separation 在 chroot 环境下会失败（降权后发现能恢复 gid，认为不安全直接退出）。
 
 ```bash
 # Alpine 里执行
-ssh-keygen -A
-echo "PermitRootLogin yes" >> /etc/ssh/sshd_config
+apk add dropbear
 passwd root
-/usr/sbin/sshd
+dropbear -R -p 22
 
-# PC 上直接 SSH（替换为设备 IP）
+# 通过 hdc 端口转发连接（USB，不依赖网络）
+# PC 端执行：
+hdc fport tcp:2222 tcp:22
+ssh root@127.0.0.1 -p 2222
+
+# 或通过局域网直接连接（需要网络互通）
 ssh root@<设备IP>
 ```
+
+> 注意：手机热点通常开启了 AP 隔离，热点下的设备之间不能互通。这种情况下用 hdc fport 走 USB 转发。
 
 ### tmux 保持会话
 
