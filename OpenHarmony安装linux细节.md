@@ -182,11 +182,12 @@ ssh root@<设备IP>
 - **XFCE4** — 轻量桌面环境（Alpine 仓库有完整包，不像欧拉只有空壳）
 - **Firefox** — 浏览器
 - **font-noto-cjk** — 中文字体
+- **fcitx5 + fcitx5-chinese-addons** — 中文输入法
 
 手动安装：
 
 ```bash
-apk add xvfb x11vnc xfce4 xfce4-terminal dbus firefox font-noto-cjk
+apk add xvfb x11vnc xfce4 xfce4-terminal dbus firefox font-noto-cjk fcitx5 fcitx5-chinese-addons
 ```
 
 启动 VNC 桌面：
@@ -209,6 +210,24 @@ sh /root/stop-vnc.sh
 hdc fport tcp:5900 tcp:5900
 
 # VNC 客户端连接 127.0.0.1:5900
+```
+
+### 中文输入法
+
+`setup-desktop.sh` 会自动安装 fcitx5 并在 VNC 启动时加载。切换输入法快捷键：`Ctrl+Space`。
+
+如需手动配置：
+
+```bash
+apk add fcitx5 fcitx5-chinese-addons
+
+# 设置环境变量（加到 ~/.profile 或 start-vnc.sh 里）
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+
+# 启动
+fcitx5 -d
 ```
 
 > **为什么不用 tigervnc？** Alpine 仓库里有 tigervnc，但 Xvfb + x11vnc 的组合更轻量，配置更简单，在 chroot 环境下兼容性更好。
