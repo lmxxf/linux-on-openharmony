@@ -240,13 +240,20 @@ hdc fport tcp:5900 tcp:5900
 ```bash
 apk add fcitx5 fcitx5-chinese-addons
 
-# 设置环境变量（加到 ~/.profile 或 start-vnc.sh 里）
+# 在 VNC 桌面的终端里执行（不是 hdc shell）
+export XDG_RUNTIME_DIR=/tmp/runtime-root
+mkdir -p $XDG_RUNTIME_DIR
+export DISPLAY=:1
 export GTK_IM_MODULE=fcitx
 export QT_IM_MODULE=fcitx
 export XMODIFIERS=@im=fcitx
-
-# 启动
 fcitx5 -d
+
+# Firefox 需要重启才能识别输入法
+pkill firefox
+firefox &
+
+# Ctrl+Space 切换中文/英文
 ```
 
 > **为什么不用 tigervnc？** Alpine 仓库里有 tigervnc，但 Xvfb + x11vnc 的组合更轻量，配置更简单，在 chroot 环境下兼容性更好。
