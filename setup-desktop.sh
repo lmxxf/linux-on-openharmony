@@ -54,7 +54,7 @@ info "更新软件源索引 ..."
 rm -f /lib/apk/db/lock
 apk update --allow-untrusted
 
-PACKAGES="dropbear xvfb x11vnc xfce4 xfce4-terminal dbus firefox font-noto-cjk"
+PACKAGES="dropbear xvfb x11vnc xfce4 xfce4-terminal dbus firefox font-noto-cjk fcitx5 fcitx5-chinese-addons"
 
 info "安装软件包（已安装的会跳过）..."
 apk add --allow-untrusted $PACKAGES
@@ -93,6 +93,12 @@ Xvfb ${DISPLAY_NUM} -screen 0 ${RESOLUTION}x24 &
 sleep 1
 
 export DISPLAY=${DISPLAY_NUM}
+
+# 中文输入法
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+fcitx5 -d 2>/dev/null
 
 # 启动窗口管理器（不用 xfce4-session，chroot 下会话管理不正常）
 xfwm4 &
