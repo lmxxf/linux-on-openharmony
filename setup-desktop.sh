@@ -95,6 +95,8 @@ sleep 1
 export DISPLAY=${DISPLAY_NUM}
 
 # 中文输入法
+export XDG_RUNTIME_DIR=/tmp/runtime-root
+mkdir -p $XDG_RUNTIME_DIR
 export GTK_IM_MODULE=fcitx
 export QT_IM_MODULE=fcitx
 export XMODIFIERS=@im=fcitx

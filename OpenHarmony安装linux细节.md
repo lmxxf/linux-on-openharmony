@@ -276,6 +276,55 @@ tmux ls                 # 列出所有会话
 
 下次 `hdc shell` 进来后重新执行 `alpine-enter.sh`，再 `tmux attach` 就能接回之前的会话。
 
+### 完全重装
+
+`deploy.ps1` 检测到 Alpine 已安装会跳过安装步骤（桌面环境会重新部署）。如需完全重装：
+
+```powershell
+# PC 端执行
+hdc file send uninstall.sh /data/local/tmp/uninstall.sh
+hdc shell "sh /data/local/tmp/uninstall.sh"
+.\deploy.ps1
+```
+
+### 单独安装各组件
+
+如果不用一键部署，在 Alpine 内手动安装：
+
+```bash
+# SSH（dropbear）
+apk add dropbear
+dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
+passwd root
+dropbear -R -p 22
+
+# VNC + 桌面
+apk add xvfb x11vnc xfce4 xfce4-terminal dbus
+
+# 浏览器
+apk add firefox
+
+# 中文字体
+apk add font-noto-cjk
+
+# 中文输入法
+apk add fcitx5 fcitx5-chinese-addons
+
+# 手动启动 VNC（不用 start-vnc.sh 时）
+Xvfb :1 -screen 0 1920x1080x24 &
+export DISPLAY=:1
+export XDG_RUNTIME_DIR=/tmp/runtime-root
+mkdir -p $XDG_RUNTIME_DIR
+export GTK_IM_MODULE=fcitx
+export QT_IM_MODULE=fcitx
+export XMODIFIERS=@im=fcitx
+fcitx5 -d
+xfwm4 &
+xfce4-terminal &
+firefox &
+x11vnc -display :1 -forever -shared -rfbport 5900 -nopw -noshm -bg
+```
+
 ## 卸载
 
 > **不要直接 `rm -rf /data/alpine`**，挂载点没卸载会删到宿主系统的 `/dev` 和 `/sys`。
