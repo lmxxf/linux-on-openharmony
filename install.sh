@@ -66,6 +66,30 @@ mountpoint -q "$ALPINE_DIR/sys"     || mount -t sysfs sysfs "$ALPINE_DIR/sys"
 mountpoint -q "$ALPINE_DIR/dev"     || mount -o bind /dev "$ALPINE_DIR/dev"
 mountpoint -q "$ALPINE_DIR/dev/pts" || mount -t devpts devpts "$ALPINE_DIR/dev/pts"
 
+# ── 网络修复 ──
+
+# eth0/eth1 没有 IP 但可能抢占默认路由，导致网络不通
+# 检测 wlan0 有 IP 时，删掉指向 eth0/eth1 的默认路由
+WLAN_IP=$(ip addr show wlan0 2>/dev/null | grep "inet " | awk '{print $2}')
+if [ -n "$WLAN_IP" ]; then
+    for iface in eth0 eth1; do
+        if ip route show default dev $iface >/dev/null 2>&1; then
+            info "删除 $iface 上的默认路由（wlan0 有 IP: $WLAN_IP）"
+            ip route del default dev $iface 2>/dev/null || true
+        fi
+    done
+    # 确保 wlan0 有默认路由
+    if ! ip route show default dev wlan0 >/dev/null 2>&1; then
+        GATEWAY=$(ip route show dev wlan0 | grep -oP 'via \K[0-9.]+' | head -1)
+        if [ -z "$GATEWAY" ]; then
+            # 猜测网关：取 wlan0 IP 的网段 .1
+            GATEWAY=$(echo "$WLAN_IP" | sed 's|/.*||; s|\.[0-9]*$|.1|')
+        fi
+        info "添加默认路由: via $GATEWAY dev wlan0"
+        ip route add default via "$GATEWAY" dev wlan0 2>/dev/null || true
+    fi
+fi
+
 # ── 初始化包管理器 ──
 
 info "更新软件源索引 ..."
@@ -89,6 +113,18 @@ mountpoint -q $ALPINE/dev     || mount -o bind /dev $ALPINE/dev
 mountpoint -q $ALPINE/dev/pts || mount -t devpts devpts $ALPINE/dev/pts
 
 echo "nameserver 8.8.8.8" > $ALPINE/etc/resolv.conf
+
+# 网络修复：删掉没有 IP 的 eth 口上的默认路由
+WLAN_IP=$(ip addr show wlan0 2>/dev/null | grep "inet " | awk '{print $2}')
+if [ -n "$WLAN_IP" ]; then
+    for iface in eth0 eth1; do
+        ip route del default dev $iface 2>/dev/null
+    done
+    if ! ip route show default dev wlan0 >/dev/null 2>&1; then
+        GW=$(echo "$WLAN_IP" | sed 's|/.*||; s|\.[0-9]*$|.1|')
+        ip route add default via "$GW" dev wlan0 2>/dev/null
+    fi
+fi
 
 chroot $ALPINE /bin/sh -l -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; exec /bin/sh -l"
 ENTER

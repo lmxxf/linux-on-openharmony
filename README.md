@@ -15,8 +15,10 @@
 ### 环境要求
 
 - OpenHarmony 设备（aarch64，root 权限）
-- PC 端安装 `hdc` 工具
-- 网络连接（安装软件包时需要）
+- PC 端安装 `hdc` 工具，USB 连接设备，`hdc list targets` 能看到设备
+- 设备 WiFi 已连接，能上网（安装软件包时需要从 Alpine 仓库下载）
+- 设备系统时间正确（时间偏差会导致 SSL 证书验证失败，`apk` 和 `curl` 报错）
+- 如需翻墙，手机热点 + Clash 代理先配好（详见[安装配置细节](OpenHarmony安装linux细节.md)）
 - [alpine-minirootfs-3.21.3-aarch64.tar.gz](https://dl-cdn.alpinelinux.org/alpine/v3.21/releases/aarch64/alpine-minirootfs-3.21.3-aarch64.tar.gz) 放在项目目录下
 
 ### 一键部署（Windows PowerShell）
@@ -30,7 +32,7 @@
 ### 部署后设置
 
 ```bash
-# 进入 Alpine
+# PC 端执行，通过 hdc 进入设备
 hdc shell
 sh /data/local/tmp/alpine-enter.sh
 
@@ -38,7 +40,7 @@ sh /data/local/tmp/alpine-enter.sh
 passwd root
 
 # 启动所有服务（SSH + VNC 桌面）
-sh ~/start-services.sh 1920x1080
+sh /root/start-services.sh 1920x1080
 ```
 
 ### 连接
@@ -46,13 +48,21 @@ sh ~/start-services.sh 1920x1080
 **SSH（通过 USB 端口转发，不依赖网络）：**
 
 ```powershell
+# PC 端执行（不是在 hdc shell 里）
 hdc fport tcp:2222 tcp:22
 ssh root@127.0.0.1 -p 2222
 ```
 
 **VNC 桌面：**
 
-VNC 客户端连接 `<设备IP>:5900`，即可看到 XFCE4 桌面和 Firefox 浏览器。
+```powershell
+# PC 端执行，映射 VNC 端口
+hdc fport tcp:5900 tcp:5900
+```
+
+VNC 客户端连接 `127.0.0.1:5900`，即可看到桌面（xfwm4 窗口管理器 + 终端 + Firefox 浏览器）。
+
+> **USB 连接说明：** 如果 PC 和 OpenHarmony 设备之间没有网络（仅通过 USB 连接），所有端口都需要通过 `hdc fport` 映射后才能访问。SSH 映射 `tcp:2222 tcp:22`，VNC 映射 `tcp:5900 tcp:5900`，其他服务同理。映射后统一通过 `127.0.0.1` + 对应端口访问。
 
 ## 手动安装
 
@@ -85,7 +95,6 @@ hdc shell "sh /data/local/tmp/uninstall.sh"
 ## 文档
 
 - [安装配置细节](OpenHarmony安装linux细节.md) — 代理上网、共享目录、网络修复、tmux 等详细说明
-- [RK3588 欧拉桌面浏览器安装指南](3588欧拉桌面浏览器安装指南.md) — 欧拉 Linux 上的 VNC + Firefox 安装
 - [hdc 开发记录](DevHistory.md) — hdc 终端窗口大小支持 + PC 端独立编译
 
 ## 技术细节

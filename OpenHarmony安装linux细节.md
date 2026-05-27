@@ -173,6 +173,48 @@ ssh root@<设备IP>
 
 > 注意：手机热点通常开启了 AP 隔离，热点下的设备之间不能互通。这种情况下用 hdc fport 走 USB 转发。
 
+### VNC 桌面 + Firefox 浏览器
+
+`setup-desktop.sh` 会自动安装以下组件：
+
+- **Xvfb** — 虚拟帧缓冲（无需物理显示器）
+- **x11vnc** — VNC 服务端
+- **XFCE4** — 轻量桌面环境（Alpine 仓库有完整包，不像欧拉只有空壳）
+- **Firefox** — 浏览器
+- **font-noto-cjk** — 中文字体
+
+手动安装：
+
+```bash
+apk add xvfb x11vnc xfce4 xfce4-terminal dbus firefox font-noto-cjk
+```
+
+启动 VNC 桌面：
+
+```bash
+sh /root/start-vnc.sh              # 默认 1920x1080
+sh /root/start-vnc.sh 2560x1440    # 自定义分辨率
+```
+
+停止：
+
+```bash
+sh /root/stop-vnc.sh
+```
+
+连接方式：
+
+```bash
+# PC 端映射端口（USB 连接时必须）
+hdc fport tcp:5900 tcp:5900
+
+# VNC 客户端连接 127.0.0.1:5900
+```
+
+> **为什么不用 tigervnc？** Alpine 仓库里有 tigervnc，但 Xvfb + x11vnc 的组合更轻量，配置更简单，在 chroot 环境下兼容性更好。
+
+> **为什么不用 OpenSSH？** OpenSSH 9.9 的 privilege separation 在 chroot 环境下会失败——sshd 降权后发现能恢复 gid，认为不安全直接退出（status 255）。dropbear 没有这个机制，专为嵌入式/受限环境设计。
+
 ### tmux 保持会话
 
 hdc 断开后 Alpine 里正在运行的进程会被杀掉。用 tmux 可以让会话在后台保持运行：

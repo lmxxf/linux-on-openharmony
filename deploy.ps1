@@ -37,7 +37,7 @@ Write-Host "       sh /data/local/tmp/alpine-enter.sh"
 Write-Host "       passwd root"
 Write-Host ""
 Write-Host "    2. Start services:" -ForegroundColor Yellow
-Write-Host "       sh ~/start-services.sh 1920x1080"
+Write-Host "       sh /root/start-services.sh 1920x1080"
 Write-Host ""
 Write-Host "    3. SSH (via hdc port forward):" -ForegroundColor Yellow
 Write-Host "       hdc fport tcp:2222 tcp:22"
