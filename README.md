@@ -25,6 +25,9 @@
 
 ```powershell
 .\deploy.ps1
+
+# 如果提示"系统禁止运行脚本"，用以下方式绕过：
+powershell -ExecutionPolicy Bypass -File .\deploy.ps1
 ```
 
 自动完成：推送文件 -> 安装 Alpine -> 安装 SSH + VNC + XFCE4 桌面 + Firefox + 中文字体。
