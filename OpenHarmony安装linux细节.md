@@ -106,7 +106,26 @@ curl -I https://www.google.com
 
 手机端 Clash 需要开启「允许局域网连接」（Allow LAN），否则只监听 127.0.0.1。
 
-如果 `apk` 报 `Unable to lock database`，先清锁文件：
+**如何查看手机热点 IP（网关地址）：**
+
+手机热点的网关不一定是 `.1`，而是手机自身的 IP。在 OH 侧（退出 Alpine 后）查看 ARP 表：
+
+```bash
+cat /proc/net/arp
+```
+
+输出中 `wlan0` 对应的、HW address 不全零的 IP 就是局域网内的设备。网关是其中能 ping 通外网的那个（通常就是手机的 IP）。
+
+也可以在 Alpine 里查看当前路由：
+
+```bash
+ip route          # 查看路由表
+ip addr show wlan0  # 查看本机 IP
+```
+
+**`apk` 报 `Unable to lock database` 怎么办：**
+
+上次 apk 操作被中断，锁文件残留。清掉即可：
 
 ```bash
 rm -f /lib/apk/db/lock
