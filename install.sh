@@ -68,17 +68,18 @@ mountpoint -q "$ALPINE_DIR/dev/pts" || mount -t devpts devpts "$ALPINE_DIR/dev/p
 
 # eth0/eth1 没有 IP 但可能抢占默认路由，导致网络不通
 # 检测 wlan0 有 IP 时，删掉指向 eth0/eth1 的默认路由
-# 注意：OH 的 toybox 没有 awk 和 grep -P，只用 sed/grep 基础功能
-WLAN_IP=$(ip addr show wlan0 2>/dev/null | grep "inet " | sed 's/.*inet \([^ ]*\).*/\1/' | head -1)
+# 注意：OH 的 toybox 没有 awk，grep 不支持管道读 ip 输出，全用 sed
+WLAN_IP=$(ip -4 addr show wlan0 2>/dev/null | sed -n 's/.*inet \([^ ]*\).*/\1/p' | head -1)
 if [ -n "$WLAN_IP" ]; then
     for iface in eth0 eth1; do
-        if ip route show default dev $iface 2>/dev/null | grep -q default; then
+        HAS_DEFAULT=$(ip route show default dev $iface 2>/dev/null)
+        if [ -n "$HAS_DEFAULT" ]; then
             info "删除 $iface 上的默认路由（wlan0 有 IP: $WLAN_IP）"
             ip route del default dev $iface 2>/dev/null || true
         fi
     done
-    # 确保 wlan0 有默认路由
-    if ! ip route show default dev wlan0 2>/dev/null | grep -q default; then
+    DEFAULT_VIA_WLAN=$(ip route show default dev wlan0 2>/dev/null)
+    if [ -z "$DEFAULT_VIA_WLAN" ]; then
         GATEWAY=$(ip route show dev wlan0 2>/dev/null | sed -n 's/.*via \([0-9.]*\).*/\1/p' | head -1)
         if [ -z "$GATEWAY" ]; then
             GATEWAY=$(echo "$WLAN_IP" | sed 's|/.*||; s|\.[0-9]*$|.1|')
@@ -113,12 +114,13 @@ mountpoint -q $ALPINE/dev/pts || mount -t devpts devpts $ALPINE/dev/pts
 echo "nameserver 8.8.8.8" > $ALPINE/etc/resolv.conf
 
 # 网络修复：删掉没有 IP 的 eth 口上的默认路由
-WLAN_IP=$(ip addr show wlan0 2>/dev/null | grep "inet " | sed 's/.*inet \([^ ]*\).*/\1/' | head -1)
+WLAN_IP=$(ip -4 addr show wlan0 2>/dev/null | sed -n 's/.*inet \([^ ]*\).*/\1/p' | head -1)
 if [ -n "$WLAN_IP" ]; then
     for iface in eth0 eth1; do
         ip route del default dev $iface 2>/dev/null
     done
-    if ! ip route show default dev wlan0 2>/dev/null | grep -q default; then
+    DEFAULT_VIA_WLAN=$(ip route show default dev wlan0 2>/dev/null)
+    if [ -z "$DEFAULT_VIA_WLAN" ]; then
         GW=$(echo "$WLAN_IP" | sed 's|/.*||; s|\.[0-9]*$|.1|')
         ip route add default via "$GW" dev wlan0 2>/dev/null
     fi
