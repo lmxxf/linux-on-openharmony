@@ -126,6 +126,9 @@ if [ -n "$WLAN_IP" ]; then
     fi
 fi
 
+# 自动启动 dropbear SSH（如果已安装且未运行）
+chroot $ALPINE /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; command -v dropbear >/dev/null 2>&1 && ! pidof dropbear >/dev/null 2>&1 && dropbear -R -p 22 && echo '[*] SSH 已启动（端口 22）'" 2>/dev/null
+
 chroot $ALPINE /bin/sh -l -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; exec /bin/sh -l"
 ENTER
 chmod +x "$ENTER_SCRIPT"
