@@ -70,19 +70,19 @@ mountpoint -q "$ALPINE_DIR/dev/pts" || mount -t devpts devpts "$ALPINE_DIR/dev/p
 
 # eth0/eth1 没有 IP 但可能抢占默认路由，导致网络不通
 # 检测 wlan0 有 IP 时，删掉指向 eth0/eth1 的默认路由
-WLAN_IP=$(ip addr show wlan0 2>/dev/null | grep "inet " | awk '{print $2}')
+# 注意：OH 的 toybox 没有 awk 和 grep -P，只用 sed/grep 基础功能
+WLAN_IP=$(ip addr show wlan0 2>/dev/null | grep "inet " | sed 's/.*inet \([^ ]*\).*/\1/' | head -1)
 if [ -n "$WLAN_IP" ]; then
     for iface in eth0 eth1; do
-        if ip route show default dev $iface >/dev/null 2>&1; then
+        if ip route show default dev $iface 2>/dev/null | grep -q default; then
             info "删除 $iface 上的默认路由（wlan0 有 IP: $WLAN_IP）"
             ip route del default dev $iface 2>/dev/null || true
         fi
     done
     # 确保 wlan0 有默认路由
-    if ! ip route show default dev wlan0 >/dev/null 2>&1; then
-        GATEWAY=$(ip route show dev wlan0 | grep -oP 'via \K[0-9.]+' | head -1)
+    if ! ip route show default dev wlan0 2>/dev/null | grep -q default; then
+        GATEWAY=$(ip route show dev wlan0 2>/dev/null | sed -n 's/.*via \([0-9.]*\).*/\1/p' | head -1)
         if [ -z "$GATEWAY" ]; then
-            # 猜测网关：取 wlan0 IP 的网段 .1
             GATEWAY=$(echo "$WLAN_IP" | sed 's|/.*||; s|\.[0-9]*$|.1|')
         fi
         info "添加默认路由: via $GATEWAY dev wlan0"
@@ -115,12 +115,12 @@ mountpoint -q $ALPINE/dev/pts || mount -t devpts devpts $ALPINE/dev/pts
 echo "nameserver 8.8.8.8" > $ALPINE/etc/resolv.conf
 
 # 网络修复：删掉没有 IP 的 eth 口上的默认路由
-WLAN_IP=$(ip addr show wlan0 2>/dev/null | grep "inet " | awk '{print $2}')
+WLAN_IP=$(ip addr show wlan0 2>/dev/null | grep "inet " | sed 's/.*inet \([^ ]*\).*/\1/' | head -1)
 if [ -n "$WLAN_IP" ]; then
     for iface in eth0 eth1; do
         ip route del default dev $iface 2>/dev/null
     done
-    if ! ip route show default dev wlan0 >/dev/null 2>&1; then
+    if ! ip route show default dev wlan0 2>/dev/null | grep -q default; then
         GW=$(echo "$WLAN_IP" | sed 's|/.*||; s|\.[0-9]*$|.1|')
         ip route add default via "$GW" dev wlan0 2>/dev/null
     fi
@@ -140,5 +140,5 @@ info "========================================"
 info "  安装完成！"
 info "  进入 Linux:  sh $ENTER_SCRIPT"
 info "  安装软件:    apk add <包名>"
-info "  占用空间:    约 $(du -s "$ALPINE_DIR/usr" "$ALPINE_DIR/lib" "$ALPINE_DIR/bin" "$ALPINE_DIR/etc" "$ALPINE_DIR/sbin" "$ALPINE_DIR/var" 2>/dev/null | awk '{s+=$1} END{printf "%dM", s/1024}')"
+info "  占用空间:    约 $(du -sh "$ALPINE_DIR" 2>/dev/null | sed 's/[[:space:]].*//')"
 info "========================================"
