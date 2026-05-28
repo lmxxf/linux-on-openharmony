@@ -22,8 +22,6 @@
 # 支持重复执行：已安装的软件包会跳过，脚本文件会覆盖更新。
 #
 
-set -e
-
 info() { echo "[*] $1"; }
 warn() { echo "[!] $1"; }
 err()  { echo "[!] $1" >&2; exit 1; }
@@ -57,7 +55,7 @@ apk update --allow-untrusted
 PACKAGES="dropbear xvfb x11vnc xfce4 xfce4-terminal dbus firefox font-noto-cjk fcitx5 fcitx5-chinese-addons"
 
 info "安装软件包（已安装的会跳过）..."
-apk add --allow-untrusted $PACKAGES
+apk add --allow-untrusted $PACKAGES || err "软件包安装失败，检查网络"
 
 # ── 配置 SSH ──
 

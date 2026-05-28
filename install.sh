@@ -8,8 +8,6 @@
 #   或 hdc shell 进去后: sh /data/local/tmp/install.sh
 #
 
-set -e
-
 ALPINE_DIR="/data/alpine"
 ALPINE_VERSION="3.21"
 ROOTFS_FILE="/data/local/tmp/alpine-minirootfs.tar.gz"
@@ -93,10 +91,10 @@ fi
 # ── 初始化包管理器 ──
 
 info "更新软件源索引 ..."
-chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk update --allow-untrusted" 2>&1
+chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk update --allow-untrusted" 2>&1 || err "apk update 失败，检查网络"
 
 info "安装基础工具 ..."
-chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk add --allow-untrusted bash curl htop tmux openssh" 2>&1
+chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk add --allow-untrusted bash curl htop tmux openssh" 2>&1 || err "apk add 失败"
 
 # ── 生成入口脚本 ──
 
