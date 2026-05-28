@@ -34,23 +34,17 @@ info "Alpine $(cat /etc/alpine-release) 检测到"
 
 # ── 网络检查 ──
 
-info "检查网络连接 ..."
-if ! wget -q --spider --timeout=5 http://mirrors.tuna.tsinghua.edu.cn 2>/dev/null; then
-    warn "无法连接 Alpine 软件源！"
-    warn "请检查："
-    warn "  1. 设备 WiFi 是否已连接"
-    warn "  2. 默认路由是否正确（ip route，确认 default 走 wlan0）"
-    warn "  3. 系统时间是否正确（date，时间错会导致 SSL 失败）"
-    warn "  4. 如需翻墙，设置 http_proxy/https_proxy 环境变量"
-    err "网络不通，无法安装软件包"
-fi
-info "网络正常"
-
 # ── 安装软件包 ──
 
 info "更新软件源索引 ..."
 rm -f /lib/apk/db/lock
-apk update --allow-untrusted
+if ! apk update --allow-untrusted; then
+    warn "apk update 失败！请检查："
+    warn "  1. 设备 WiFi 是否已连接"
+    warn "  2. 默认路由是否正确（ip route，确认 default 走 wlan0）"
+    warn "  3. 系统时间是否正确（date，时间错会导致 SSL 失败）"
+    err "网络不通，无法安装软件包"
+fi
 
 PACKAGES="dropbear xvfb x11vnc xfce4 xfce4-terminal dbus firefox font-noto-cjk fcitx5 fcitx5-chinese-addons"
 
