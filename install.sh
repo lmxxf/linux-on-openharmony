@@ -51,8 +51,8 @@ info "Alpine $(cat "$ALPINE_DIR/etc/alpine-release") 解压完成"
 info "配置 DNS 和软件源 ..."
 echo "nameserver 8.8.8.8" > "$ALPINE_DIR/etc/resolv.conf"
 cat > "$ALPINE_DIR/etc/apk/repositories" << EOF
-https://mirrors.tuna.tsinghua.edu.cn/alpine/v${ALPINE_VERSION}/main
-https://mirrors.tuna.tsinghua.edu.cn/alpine/v${ALPINE_VERSION}/community
+http://mirrors.tuna.tsinghua.edu.cn/alpine/v${ALPINE_VERSION}/main
+http://mirrors.tuna.tsinghua.edu.cn/alpine/v${ALPINE_VERSION}/community
 EOF
 
 # ── 挂载 ──

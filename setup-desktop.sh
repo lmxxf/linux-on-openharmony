@@ -35,7 +35,7 @@ info "Alpine $(cat /etc/alpine-release) 检测到"
 # ── 网络检查 ──
 
 info "检查网络连接 ..."
-if ! wget -q --spider --timeout=5 https://mirrors.tuna.tsinghua.edu.cn 2>/dev/null; then
+if ! wget -q --spider --timeout=5 http://mirrors.tuna.tsinghua.edu.cn 2>/dev/null; then
     warn "无法连接 Alpine 软件源！"
     warn "请检查："
     warn "  1. 设备 WiFi 是否已连接"
