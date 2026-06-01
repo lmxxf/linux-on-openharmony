@@ -130,8 +130,9 @@ chmod +x /root/stop-vnc.sh
 cat > /root/start-services.sh << 'STARTALL'
 #!/bin/sh
 # 一键启动 SSH + VNC
-echo "[*] 启动 SSH（端口 22）..."
-dropbear -R -p 22 2>/dev/null || echo "[*] SSH 已在运行"
+# SSH 用 2222 端口，避开 OH 系统自带的 dropbear（占 22，认证的是 OH 账户）
+echo "[*] 启动 SSH（端口 2222）..."
+dropbear -R -p 2222 2>/dev/null || echo "[*] SSH 已在运行"
 echo "[*] 启动 VNC 桌面 ..."
 sh /root/start-vnc.sh "$@"
 STARTALL
@@ -151,11 +152,11 @@ info "    sh /root/start-services.sh 1920x1080"
 info "    sh /root/start-services.sh 2560x1440"
 info ""
 info "  单独启动："
-info "    SSH:  dropbear -R -p 22"
+info "    SSH:  dropbear -R -p 2222"
 info "    VNC:  sh /root/start-vnc.sh"
 info ""
 info "  SSH 连接（通过 hdc 端口转发）："
-info "    PC 端: hdc fport tcp:2222 tcp:22"
+info "    PC 端: hdc fport tcp:2222 tcp:2222"
 info "    PC 端: ssh root@127.0.0.1 -p 2222"
 info ""
 info "  VNC 连接（通过 hdc 端口转发）："

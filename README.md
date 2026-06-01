@@ -52,9 +52,11 @@ sh /root/start-services.sh 1920x1080
 
 ```powershell
 # PC 端执行（不是在 hdc shell 里）
-hdc fport tcp:2222 tcp:22
+hdc fport tcp:2222 tcp:2222
 ssh root@127.0.0.1 -p 2222
 ```
+
+> **SSH 用 2222 端口，不是 22。** OH 系统自带的 dropbear 占用了 22 端口，它认证的是 OH 系统账户而非 Alpine 账户，所以 Alpine 的 SSH 必须用 2222。
 
 **VNC 桌面：**
 
@@ -65,7 +67,7 @@ hdc fport tcp:5900 tcp:5900
 
 VNC 客户端连接 `127.0.0.1:5900`，即可看到桌面（xfwm4 窗口管理器 + 终端 + Firefox 浏览器）。
 
-> **USB 连接说明：** 如果 PC 和 OpenHarmony 设备之间没有网络（仅通过 USB 连接），所有端口都需要通过 `hdc fport` 映射后才能访问。SSH 映射 `tcp:2222 tcp:22`，VNC 映射 `tcp:5900 tcp:5900`，其他服务同理。映射后统一通过 `127.0.0.1` + 对应端口访问。
+> **USB 连接说明：** 如果 PC 和 OpenHarmony 设备之间没有网络（仅通过 USB 连接），所有端口都需要通过 `hdc fport` 映射后才能访问。SSH 映射 `tcp:2222 tcp:2222`，VNC 映射 `tcp:5900 tcp:5900`，其他服务同理。映射后统一通过 `127.0.0.1` + 对应端口访问。
 
 **SSH 连接报 HOST IDENTIFICATION HAS CHANGED：**
 
@@ -82,7 +84,7 @@ ssh-keygen -R "[127.0.0.1]:2222"
 hdc fport ls
 
 # 取消指定映射
-hdc fport rm tcp:2222 tcp:22
+hdc fport rm tcp:2222 tcp:2222
 hdc fport rm tcp:5900 tcp:5900
 ```
 

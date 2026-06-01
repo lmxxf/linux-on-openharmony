@@ -40,7 +40,7 @@ Write-Host "    2. Start services:" -ForegroundColor Yellow
 Write-Host "       sh /root/start-services.sh 1920x1080"
 Write-Host ""
 Write-Host "    3. SSH (via hdc port forward):" -ForegroundColor Yellow
-Write-Host "       hdc fport tcp:2222 tcp:22"
+Write-Host "       hdc fport tcp:2222 tcp:2222"
 Write-Host "       ssh root@127.0.0.1 -p 2222"
 Write-Host ""
 Write-Host "    4. VNC:" -ForegroundColor Yellow

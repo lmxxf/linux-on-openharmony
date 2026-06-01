@@ -127,7 +127,8 @@ if [ -n "$WLAN_IP" ]; then
 fi
 
 # 自动启动 dropbear SSH（如果已安装且未运行）
-chroot $ALPINE /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; command -v dropbear >/dev/null 2>&1 && ! pidof dropbear >/dev/null 2>&1 && dropbear -R -p 22 && echo '[*] SSH 已启动（端口 22）'" 2>/dev/null
+# 用 2222 端口，避开 OH 系统自带的 dropbear（占用 22 端口，认证的是 OH 账户不是 Alpine）
+chroot $ALPINE /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; command -v dropbear >/dev/null 2>&1 && ! pidof dropbear >/dev/null 2>&1 && dropbear -R -p 2222 && echo '[*] SSH 已启动（端口 2222）'" 2>/dev/null
 
 chroot $ALPINE /bin/sh -l -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; exec /bin/sh -l"
 ENTER

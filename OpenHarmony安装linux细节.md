@@ -175,22 +175,26 @@ ping -c 1 8.8.8.8
 
 在 Alpine 里用 dropbear（轻量 SSH 服务端）开启 SSH 服务。不用 OpenSSH 的 sshd，因为 OpenSSH 9.9 的 privilege separation 在 chroot 环境下会失败（降权后发现能恢复 gid，认为不安全直接退出）。
 
+**必须用 2222 端口，不能用 22。** OH 系统自带一个 dropbear（`/system/bin/dropbear -FRB`）已经占用了 22 端口，它认证的是 OH 系统账户，不认 Alpine chroot 里设的密码。所以 Alpine 的 SSH 必须换个端口（如 2222），否则要么端口冲突起不来，要么连上的是 OH 系统而非 Alpine。
+
 ```bash
 # Alpine 里执行
 apk add dropbear
 passwd root
-dropbear -R -p 22
+dropbear -R -p 2222
 
 # 通过 hdc 端口转发连接（USB，不依赖网络）
 # PC 端执行：
-hdc fport tcp:2222 tcp:22
+hdc fport tcp:2222 tcp:2222
 ssh root@127.0.0.1 -p 2222
 
 # 或通过局域网直接连接（需要网络互通）
-ssh root@<设备IP>
+ssh root@<设备IP> -p 2222
 ```
 
 > 注意：手机热点通常开启了 AP 隔离，热点下的设备之间不能互通。这种情况下用 hdc fport 走 USB 转发。
+
+> **排查 SSH 连不上：** 如果密码怎么都不对，可能是连到了 OH 系统的 dropbear（22 端口）而非 Alpine 的（2222 端口）。确认 Alpine 的 dropbear 在跑：`chroot /data/alpine /bin/sh -c 'export PATH=/usr/bin:/usr/sbin:/bin:/sbin; netstat -tlnp | grep 2222'`。另外 dropbear 旧进程残留会导致新进程起不来（端口占用），先 `killall dropbear` 再重启。
 
 ### VNC 桌面 + Firefox 浏览器
 
@@ -337,11 +341,11 @@ hdc shell "sh /data/local/tmp/uninstall.sh"
 如果不用一键部署，在 Alpine 内手动安装：
 
 ```bash
-# SSH（dropbear）
+# SSH（dropbear，用 2222 端口避开 OH 系统自带的 dropbear）
 apk add dropbear
 dropbearkey -t ecdsa -f /etc/dropbear/dropbear_ecdsa_host_key
 passwd root
-dropbear -R -p 22
+dropbear -R -p 2222
 
 # VNC + 桌面
 apk add xvfb x11vnc xfce4 xfce4-terminal dbus
