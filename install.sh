@@ -14,7 +14,28 @@ ROOTFS_FILE="/data/local/tmp/alpine-minirootfs.tar.gz"
 ENTER_SCRIPT="/data/local/tmp/alpine-enter.sh"
 
 info() { echo "[*] $1"; }
-err()  { echo "[!] $1" >&2; exit 1; }
+# 失败提示要醒目——几百行 apk 输出里那一行红色横幅才看得见
+err()  {
+    printf '\033[1;31m' >&2
+    echo "" >&2
+    echo "################################################################" >&2
+    echo "##  [安装失败] $1" >&2
+    echo "##  脚本已停止，未完成安装。请排查上面这一步的错误。" >&2
+    echo "################################################################" >&2
+    printf '\033[0m' >&2
+    exit 1
+}
+# 重试 N 次：镜像源偶发 temporary error，重试一次通常就好，别一失败就退出
+retry() {
+    n=0; max=3
+    while [ $n -lt $max ]; do
+        "$@" && return 0
+        n=$((n+1))
+        printf '\033[1;33m[!] 失败，重试 %s/%s ...\033[0m\n' "$n" "$max" >&2
+        sleep 2
+    done
+    return 1
+}
 
 # ── 前置检查 ──
 
@@ -92,10 +113,10 @@ fi
 # ── 初始化包管理器 ──
 
 info "更新软件源索引 ..."
-chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk update --allow-untrusted" 2>&1 || err "apk update 失败，检查网络"
+retry chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk update --allow-untrusted" || err "apk update 失败（已重试 3 次），检查网络"
 
 info "安装基础工具 ..."
-chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk add --allow-untrusted bash curl htop tmux openssh" 2>&1 || err "apk add 失败"
+retry chroot "$ALPINE_DIR" /bin/sh -c "export PATH=/usr/bin:/usr/sbin:/bin:/sbin; apk add --allow-untrusted bash curl htop tmux openssh" || err "apk add 失败（已重试 3 次）"
 
 # ── 生成入口脚本 ──
 
