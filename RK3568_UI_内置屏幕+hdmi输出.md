@@ -134,6 +134,46 @@ reboot            # OH 桌面回来
 
 (我们的所有改动都是运行时的,reboot 后全复位。)
 
+## 在桌面上跑程序
+
+Weston 自带的 `weston-desktop-shell` 只有左上角一个 launcher 图标(开 `weston-terminal`)。从终端里启动其他程序。
+
+### Firefox
+
+如果之前跑过 `setup-desktop.sh`(VNC 方案),Alpine 里已经装好 firefox 了。Wayland 下要显式告诉它走 wayland 后端:
+
+```sh
+MOZ_ENABLE_WAYLAND=1 firefox &
+```
+
+没装过的话:
+
+```sh
+apk add firefox font-noto-cjk
+MOZ_ENABLE_WAYLAND=1 firefox &
+```
+
+**实测体感: 很慢**。我们没 GPU 加速(Mesa llvmpipe 软渲染),滚动网页肉眼可见地钝,看视频不行。日常查个资料勉强。
+如果想真用 Firefox,要么走 VNC 方案(走主 README 那条 chroot+VNC,X11 路径上 Mesa 有些优化),要么等以后解决 panfrost 与 bifrost 的冲突。
+
+### 其他常用程序
+
+```sh
+apk add xterm                        # 不喜欢 weston-terminal 的话
+apk add mousepad                     # 轻量文本编辑
+apk add htop btop                    # 系统监控
+apk add file-roller                  # 压缩包管理(注:它会拉一堆 X11 依赖)
+```
+
+直接在 weston-terminal 里 `mousepad &` 之类启动即可。
+注意 Wayland 原生应用(weston-terminal、weston 自带几个 demo)流畅,X11 应用要走 XWayland 桥接,**需要单独装 `xwayland` 包**:
+
+```sh
+apk add xwayland
+```
+
+装完 weston 会自动启动 XWayland(默认行为),X11 程序就能跑了,但更慢一层。
+
 ## 故障速查
 
 ### Q: start-hdmi.sh 报 `card0 当前占用: composer_host(xxx)`,weston 起不来?
