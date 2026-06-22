@@ -1,102 +1,48 @@
-# hdc 终端窗口大小支持 — 开发记录
+# 开发记录
 
-## 问题
+按时间倒序记录这个项目的每一段独立工作。
 
-hdc shell 已有完整的 PTY 支持（设备端用 `/dev/ptmx` 创建伪终端），但没有传递终端窗口大小（TIOCSWINSZ），导致 tmux、vim、htop 等全屏程序不知道终端尺寸，显示混乱。
+---
 
-## 方案
+## 2026-06-23 — 板载屏 / HDMI 直出 Linux 桌面
 
-在 hdc 协议中新增 `CMD_SHELL_WINSIZE` 命令，PC 端获取本地终端大小发给设备端，设备端用 `ioctl(TIOCSWINSZ)` 设置 PTY。
+让 Alpine 桌面直接显示在 RK3568 板载屏 + HDMI 上,不走 VNC。OH 让出 DRM master,Weston 接管。
 
-### 数据格式
+**核心思路**:`begetctl service_control stop` 安全停 OH 的 render_service / composer_host(绕开 init 的 critical 保护),Alpine chroot 里起 seatd + Weston 14 接管 `/dev/dri/card0`。
 
-PC 端通过 shell 交互数据通道发送 8 字节消息：
+**新增文件**:
 
-```
-字节 0-3: magic "\x00WSZ" （区分普通 shell 数据）
-字节 4-5: rows (uint16, big-endian)
-字节 6-7: cols (uint16, big-endian)
-```
+| 文件 | 用途 |
+|------|------|
+| `setup-hdmi.sh` | chroot 内一次性装包(weston / weston-backend-drm / seatd / mesa / eudev / kmscube) |
+| `start-hdmi.sh` | 起 seatd + Weston,板载 DSI 屏 + HDMI 同屏 |
+| `oh-stop-render.sh` | OH 侧停图形栈(begetctl,绕开 critical) |
+| `oh-start-render.sh` | OH 侧恢复(或直接 reboot) |
+| `RK3568_UI_内置屏幕+hdmi输出.md` | 完整使用手册 + 踩坑记录 |
 
-server_for_client 在 `interactiveShellMode` 下识别 magic 前缀，将其转为 `CMD_SHELL_WINSIZE` 命令转发给 daemon，而非当作 `CMD_SHELL_DATA`。
+**踩过的坑**(详见使用手册末尾):
 
-### 改动文件（基于 OH6 源码）
+1. RK3568 OH 没 `/dev/fb*`,只能走 DRM/KMS
+2. `render_service` 是 critical 服务,直接 kill 会触发 init 重启系统
+3. `/` 分区 100% 满,任何 `sed -i` / 文件改写都 `No space left` —— 但 `begetctl` 能用,完全绕开改 cfg
+4. Weston 14 把 `weston-backend-drm` 拆成单独子包,主包不带
+5. Weston 14 强制 seatd 或 logind,root 不能直接跑;Alpine 不打包 `seatd-launch`,得手动后台起 seatd
+6. Weston 14 的 `--tty=` 参数被去掉(VT 由 seatd 管)
+7. Alpine 默认 udev 规则不打 `ID_SEAT=seat0`(没有 systemd-logind),要手写规则
+8. Mali-G52 闭源 `bifrost_kbase` 占用 GPU,Mesa panfrost 起不来,EGL 退回 llvmpipe 软渲染——纯桌面够用,3D 不行
 
-| 文件 | 归属 | 改动 |
-|------|------|------|
-| `src/common/define_enum.h` | 公共 | 新增 `CMD_SHELL_WINSIZE = 2002` |
-| `src/daemon/shell.cpp` | hdcd（设备端） | 处理 `CMD_SHELL_WINSIZE`，用 `ioctl(fdPTY, TIOCSWINSZ, &ws)` 设置 PTY 窗口大小 |
-| `src/host/server_for_client.cpp` | hdc（PC 端） | `CMD_SHELL_WINSIZE` 加入转发列表；interactiveShellMode 下识别 `\x00WSZ` magic 前缀 |
-| `src/host/client.cpp` | hdc（PC 端） | 新增 `SendWinsize()` 获取本地终端大小并发送；新增 `SIGWINCH` handler 窗口 resize 时重发；连接 shell 后立即发一次初始大小 |
-| `src/host/client.h` | hdc（PC 端） | 声明 `SendWinsize()`、`WinsizeCallback()`、`sigWinch` 成员 |
+**遗留**:
 
-### 改动补丁
+- 触屏 input 默认关联到第一个 output(HDMI),板载 DSI 屏触点映射不对——还没写 udev 规则绑定
+- VSCode/VSCodium 在 Alpine aarch64 musl 仓库里没有,得走 code-server 路线
+- OH 桌面停了之后没法不 reboot 恢复(begetctl `start` 在 stop 过的 critical 服务上无效)
 
-已打包到 `C:\work\transfer\hdc-winsize-patch.tar.gz`，保留了相对于 OH 源码根目录的路径结构。
+---
 
-解压方式：
+## 2026-05-21 — hdc 终端窗口大小(未合并)
 
-```bash
-cd /path/to/oh6/source
-tar xzf hdc-winsize-patch.tar.gz
-```
+试过给 hdc 协议加 `CMD_SHELL_WINSIZE` 命令(PC 端 `SIGWINCH` → 发 8 字节 magic + rows/cols → 设备端 `ioctl(TIOCSWINSZ)`),让 tmux/vim/htop 在 hdc shell 里能正确感知终端尺寸。同步搞了 hdc PC 端独立编译(Linux x86_64 + Windows MinGW 交叉),不依赖整套 SDK。
 
-会覆盖 `developtools/hdc/src/` 下的 5 个文件。
+**结果**:补丁打通了,设备端 hdcd 跟 OH 整包编译,PC 端独立编出 hdc_std。但**没有合并到 OH 主线**,只在本地用过几次,之后被 alpine + dropbear + ssh 这条更稳的方案替代(SSH 客户端原生支持窗口大小通知,不用改 hdc 协议)。
 
-## 编译
-
-### hdcd（设备端 daemon）
-
-随 OH 整包编译即可，刷机后自动部署到设备：
-
-```bash
-./build.sh --product-name taihang3100 --ccache
-```
-
-### hdc（PC 端命令行工具）
-
-OH 构建系统只编译设备端（aarch64），PC 端的 hdc 是 x86_64 Linux 程序，需要单独编译。
-
-OH 官方的做法是编译整个 SDK，hdc 打包在 SDK 的 `toolchains/` 里。尚未找到独立编译 PC 端 hdc 的官方方式。
-
-已完成独立编译脚本：`scripts/build_standalone_linux_host.sh`（同时保存在本工程根目录）。
-
-用法：
-
-```bash
-cd ~/oh6/source
-./developtools/hdc/scripts/build_standalone_linux_host.sh ~/oh6/source
-```
-
-脚本自动从 OH 源码树拷贝依赖（libuv、openssl、lz4、securec、libusb）并静态编译，产物为当前目录下的 `hdc_std`。如不传 OH 源码路径，则从 gitee clone 依赖。
-
-支持增量编译：`KEEP=1` 跳过已编译的依赖库。
-
-注意：此脚本编译 Linux x86_64 版本，Windows 下不可用。WSL 中可编译但因 USB 设备透传限制无法直接使用，需通过 TCP 模式连接设备（`hdc_std tconn IP:端口`）。
-
-### Windows 交叉编译（MinGW）
-
-使用 `scripts/build_standalone_mingw_host.sh`（同时保存在本工程根目录），在 WSL/Linux 中交叉编译 Windows 版 `hdc_std.exe`。
-
-前置依赖：`sudo apt install mingw-w64`（需要 posix 线程模型）。
-
-用法：
-
-```bash
-cd ~/oh6/source
-./developtools/hdc/scripts/build_standalone_mingw_host.sh ~/oh6/source
-```
-
-产物为当前目录下的 `hdc_std.exe`（PE32+ x86-64），静态链接不需要额外 DLL。
-
-与 Linux 版的主要差异：
-- 编译器：`x86_64-w64-mingw32-g++-posix`
-- 编译宏：`HOST_MINGW` + `_WIN32`（替代 `HOST_LINUX`）
-- libusb 使用 Windows 后端（`windows_winusb.c` 等）
-- 链接 `ws2_32`/`shlwapi`/`setupapi` 等 Windows 系统库
-
-## 时间线
-
-- 2026-05-19：完成代码改动，打包补丁，hdcd 可随 OH 整包编译。
-- 2026-05-20：完成 PC 端 hdc 独立编译脚本（Linux x86_64），WSL 下编译验证通过。
-- 2026-05-21：hdc 源码目录整理为独立 git repo（合并子目录 git，建立原始代码基线）。Windows 交叉编译脚本（MinGW），编译验证通过，可识别 USB 设备。
+历史代码留在 `build_standalone_linux_host.sh` / `build_standalone_mingw_host.sh` 两个独立编译脚本里,以后想再折腾 hdc 还能用。
